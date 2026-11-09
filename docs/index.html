@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text Hunter — turn any list of links into one Markdown file</title>
+<meta name="description" content="Text Hunter is a floating Chrome extension: pick a list on any page, and it collects every linked page's text into a single Markdown file.">
+<meta name="theme-color" content="#4338ca">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0b0d17; --bg2: #11142a; --card: #161a33; --line: #262b4d;
+    --text: #e8e9f5; --mute: #9aa0c3; --ind: #6366f1; --ind2: #4338ca; --sky: #38bdf8; --amber: #f59e0b; --green: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: radial-gradient(1000px 500px at 80% -10%, rgba(99,102,241,.35), transparent 60%),
+                radial-gradient(800px 400px at -10% 10%, rgba(56,189,248,.18), transparent 60%), var(--bg);
+    color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 22px; }
+  code, pre, kbd { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .brand img { width: 34px; height: 34px; }
+  nav .links { display: flex; gap: 22px; color: var(--mute); font-size: 14px; }
+  nav .links a:hover { color: var(--text); }
+
+  .hero { text-align: center; padding: 70px 0 40px; }
+  .pill { display: inline-block; padding: 4px 12px; border: 1px solid var(--line); border-radius: 99px; color: var(--mute); font-size: 12px; background: rgba(255,255,255,.03); }
+  h1 { font-size: clamp(36px, 7vw, 66px); line-height: 1.05; letter-spacing: -.03em; margin: 18px 0; }
+  h1 span { background: linear-gradient(90deg, var(--sky), var(--ind) 60%, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--mute); max-width: 620px; margin: 0 auto; font-size: 18px; }
+  .cta { display: flex; gap: 12px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+  .btn { padding: 12px 22px; border-radius: 10px; font-weight: 600; border: 1px solid var(--line); transition: transform .15s, box-shadow .15s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: linear-gradient(135deg, var(--ind), var(--ind2)); border-color: transparent; box-shadow: 0 8px 26px rgba(99,102,241,.4); }
+  .btn.ghost { background: rgba(255,255,255,.04); }
+
+  /* mock panel */
+  .demo { margin: 54px auto 0; max-width: 760px; position: relative; }
+  .browser { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.5); text-align: left; }
+  .bar { display: flex; gap: 6px; padding: 10px 14px; background: #12152b; border-bottom: 1px solid var(--line); }
+  .bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a3f66; }
+  .page { display: grid; grid-template-columns: 1fr 250px; gap: 18px; padding: 20px; min-height: 270px; }
+  .list { border: 2px solid var(--amber); background: rgba(245,158,11,.1); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--mute); }
+  .list div { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .list div:last-child { border: 0; }
+  .list b { color: var(--sky); font-weight: 500; }
+  .panel { background: #1f2230; border-radius: 12px; padding: 12px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  .panel .t { font-weight: 700; margin-bottom: 8px; }
+  .panel .t small { color: #8a8ea6; font-weight: 400; }
+  .panel .pick { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .panel .pick span:first-child { background: #0ea5e9; padding: 5px 8px; border-radius: 6px; font-weight: 700; }
+  .panel .pick span:last-child { color: var(--green); font-family: ui-monospace, monospace; font-size: 11px; }
+  .bar2 { height: 6px; background: #12141d; border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
+  .bar2 div { width: 64%; height: 100%; background: var(--green); animation: grow 4s ease-in-out infinite alternate; }
+  @keyframes grow { from { width: 12%; } to { width: 92%; } }
+  .go { background: var(--ind); text-align: center; padding: 7px; border-radius: 6px; font-weight: 700; }
+  .fab { position: absolute; right: -14px; bottom: -22px; width: 54px; height: 54px; filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
+
+  section { padding: 76px 0 0; }
+  h2 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -.02em; text-align: center; }
+  .lead { color: var(--mute); text-align: center; margin: 8px auto 36px; max-width: 560px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+  .card { background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: 14px; padding: 22px; transition: transform .2s, border-color .2s; }
+  .card:hover { transform: translateY(-4px); border-color: var(--ind); }
+  .card .ic { font-size: 26px; }
+  .card h3 { margin: 10px 0 6px; font-size: 18px; }
+  .card p { color: var(--mute); font-size: 15px; }
+  kbd { background: #0f1124; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; font-size: 12px; }
+
+  .steps { counter-reset: s; display: grid; gap: 14px; max-width: 700px; margin: 0 auto; }
+  .step { counter-increment: s; display: flex; gap: 16px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .step::before { content: counter(s); flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: linear-gradient(135deg, var(--ind), var(--ind2)); }
+  .step p { color: var(--mute); font-size: 15px; }
+  .step b { color: var(--text); }
+
+  pre { background: #0a0c18; border: 1px solid var(--line); border-radius: 12px; padding: 18px; overflow: auto; color: #c9cdf0; font-size: 13.5px; max-width: 700px; margin: 24px auto 0; }
+  pre .c { color: #6b7194; }
+
+  .trust { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .trust span { border: 1px solid var(--line); background: rgba(255,255,255,.03); padding: 8px 16px; border-radius: 99px; color: var(--mute); font-size: 14px; }
+
+  footer { margin-top: 90px; border-top: 1px solid var(--line); padding: 30px 0 50px; text-align: center; color: var(--mute); font-size: 14px; }
+  footer a { color: var(--sky); }
+
+  @media (max-width: 680px) {
+    nav .links { display: none; }
+    .page { grid-template-columns: 1fr; }
+    .fab { right: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar2 div { animation: none; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav>
+    <a class="brand" href="#"><img src="logo.svg" alt="">Text Hunter</a>
+    <div class="links"><a href="#features">Features</a><a href="#how">How it works</a><a href="#install">Install</a><a href="https://github.com/prantosmss/TextHunter">GitHub</a></div>
+  </nav>
+
+  <header class="hero">
+    <span class="pill">v1.3.1 · Chrome · Manifest V3 · zero dependencies</span>
+    <h1>Point at a list.<br><span>Hunt down every page.</span></h1>
+    <p class="sub">A floating Chrome extension that turns any list of links into one clean, downloadable Markdown file.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install in 1 minute</a>
+      <a class="btn ghost" href="https://github.com/prantosmss/TextHunter">View on GitHub</a>
+    </div>
+
+    <div class="demo" aria-hidden="true">
+      <div class="browser">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="page">
+          <div class="list">
+            <div><b>›</b> Chapter 1 – The Arrival</div>
+            <div><b>›</b> Chapter 2 – The Road West</div>
+            <div><b>›</b> Chapter 3 – Dust &amp; Iron</div>
+            <div><b>›</b> Chapter 4 – A Quiet Town</div>
+            <div><b>›</b> Chapter 5 – Outlaws</div>
+            <div><b>›</b> Chapter 6 – The Long Night</div>
+          </div>
+          <div class="panel">
+            <div class="t">Text Hunter <small>by prantosmss</small></div>
+            <div class="pick"><span>⌖ Pick</span><span>ol.toc — 6 links</span></div>
+            <div class="bar2"><div></div></div>
+            <div style="color:#8a8ea6;margin-bottom:8px">Fetching 4 / 6…</div>
+            <div class="go">Start</div>
+          </div>
+        </div>
+      </div>
+      <img class="fab" src="logo.svg" alt="">
+    </div>
+  </header>
+
+  <section id="features">
+    <h2>Everything you need, nothing you don't</h2>
+    <p class="lead">Built to be small, fast and out of your way.</p>
+    <div class="grid">
+      <div class="card"><div class="ic">🎯</div><h3>Element picker</h3><p>Hover and click the list on the page. Press <kbd>↑</kbd> / <kbd>↓</kbd> to jump to a parent or child. <kbd>Esc</kbd> cancels.</p></div>
+      <div class="card"><div class="ic">🧬</div><h3>Similar-element finder</h3><p>Several lists that look alike? Choose exactly which ones to include, with link counts and previews.</p></div>
+      <div class="card"><div class="ic">🔭</div><h3>Hover to locate</h3><p>Hovering a row scrolls the page to that section and highlights it, so you always know what you're selecting.</p></div>
+      <div class="card"><div class="ic">🚫</div><h3>Smart skipping</h3><p>Ignores <code>File:</code> pages, images, PDFs, archives and same-page anchors, so you only get real content.</p></div>
+      <div class="card"><div class="ic">🔁</div><h3>Polite fetching</h3><p>Tune the delay, retries and retry wait. Cancel any time and keep what's been collected.</p></div>
+      <div class="card"><div class="ic">🖱️</div><h3>Floating &amp; draggable</h3><p>A tiny button that remembers where you left it, isolated in a Shadow DOM so site styles can't break it.</p></div>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <p class="lead">Four clicks from a table of contents to a finished file.</p>
+    <div class="steps">
+      <div class="step"><div><b>Open the panel</b><p>Click the round floating button on any page.</p></div></div>
+      <div class="step"><div><b>Pick the list</b><p>Point at the element that holds your links. Tick any similar ones.</p></div></div>
+      <div class="step"><div><b>Press Start</b><p>Each page is fetched with retries and parsed for its heading and paragraphs.</p></div></div>
+      <div class="step"><div><b>Get one Markdown file</b><p>Pages are joined into a single <code>.md</code> that downloads automatically.</p></div></div>
+    </div>
+<pre><span class="c"># scraped_content.md</span>
+# Chapter 1 – The Arrival
+
+First paragraph…
+
+---
+
+# Chapter 2 – The Road West
+
+First paragraph…</pre>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <p class="lead">Not on the Web Store yet, so load it unpacked.</p>
+    <div class="steps">
+      <div class="step"><div><b>Get the code</b><p>Clone the repo or download it as a ZIP and unpack it.</p></div></div>
+      <div class="step"><div><b>Open <code>chrome://extensions</code></b><p>Switch on <b>Developer mode</b> in the top-right corner.</p></div></div>
+      <div class="step"><div><b>Load unpacked</b><p>Choose the folder that contains <code>manifest.json</code>.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Private by design</h2>
+    <p class="lead">Runs entirely in your browser.</p>
+    <div class="trust">
+      <span>🔒 One permission: <code>storage</code></span>
+      <span>📡 Only fetches links you select</span>
+      <span>🚫 No analytics or tracking</span>
+      <span>📦 No dependencies</span>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">Made by <a href="https://github.com/prantosmss">prantosmss</a> · <a href="https://github.com/prantosmss/TextHunter">Source on GitHub</a><br>
+  Please respect each site's terms of service and robots.txt.</div>
+</footer>
+</body>
+</html>
